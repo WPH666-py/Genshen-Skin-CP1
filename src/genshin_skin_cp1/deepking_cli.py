@@ -70,10 +70,30 @@ def _print_what(root):
 
 def _write_outputs(root, out_dir):
     os.makedirs(out_dir, exist_ok=True)
-    light_img, dark_img, _ = dk.find_mascots(root)
     rel = lambda p: os.path.relpath(p, root).replace("\\", "/") if p else None  # noqa: E731
-    light_url = dk.raw_url(rel(light_img)) if light_img else None
-    dark_url = dk.raw_url(rel(dark_img)) if dark_img else None
+
+    # 吉祥物地址的取法分两种形态:
+    #   仓库形态 —— 用 raw URL, DeepKing 从 GitHub 拉取;
+    #   pip 形态 —— 本机没有仓库, 但素材已打进 wheel, 直接内联成 data URI,
+    #               这样导出的 skin JSON 完全自包含, 不依赖任何网络。
+    pip_mode = not dk.is_repo_checkout()
+    if pip_mode:
+        # 素材已打进 wheel, 取包内任一张插画内联; 找不到再退回公开 raw 地址
+        light_url = dark_url = None
+        try:
+            from . import skin_core as _sc
+            cand = _sc.asset_path(1)
+            if os.path.exists(cand):
+                light_url = dark_url = dk._data_uri(cand)
+        except Exception:
+            pass
+        if not light_url:
+            light_url = dk.raw_url("assets/background/mascot-cp1-light.jpg")
+            dark_url = dk.raw_url("assets/background/mascot-cp1-dark.jpg")
+    else:
+        light_img, dark_img, _ = dk.find_mascots(root)
+        light_url = dk.raw_url(rel(light_img)) if light_img else None
+        dark_url = dk.raw_url(rel(dark_img)) if dark_img else None
 
     written = []
 
@@ -84,7 +104,7 @@ def _write_outputs(root, out_dir):
         json.dump(curated, f, ensure_ascii=False, indent=2)
     written.append(("手工校色版 SkinDefinition", p1))
 
-    # 2) 可视化预览(手工校色版)
+    # 2) 可视化预览(手工校色版, 图片已内联)
     p2 = os.path.join(out_dir, "%s-preview.html" % C.APP_SLUG)
     with open(p2, "w", encoding="utf-8") as f:
         f.write(dk.preview_html(curated))
@@ -110,14 +130,21 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     root = dk.repo_root()
-    if not root:
-        print("[%s] 未找到仓库根目录(需含 skin.json)。" % C.APP_SLUG)
-        print("  源码安装: 在克隆下来的仓库目录里运行")
-        print("  pip 安装 : pip install git+%s.git" % C.REPO_URL)
-        print("  或直接把这个地址粘进 DeepKing「设置 → 界面皮肤」: %s" % C.REPO_URL)
-        return 1
+    pip_mode = root is None
+    if pip_mode:
+        # pip 安装形态: 仓库文件不在本机, 但仍然能离线生成(用包内兜底配色),
+        # 且 DeepKing 在线转换照样能用 —— 它抓的是 GitHub 上的仓库, 不是本地。
+        root = dk.api_root()
 
     if args.check:
+        if pip_mode:
+            print("[%s] 当前是 pip 安装形态, 本机没有仓库文件可校验。" % C.APP_SLUG)
+            print("  在线转换契约可以直接验证(DeepKing 抓的是 GitHub):")
+            print("    %s" % C.REPO_URL)
+            print("  想跑完整自检请克隆仓库后在仓库目录里执行:")
+            print("    git clone %s.git && cd %s && %s deepking --check"
+                  % (C.REPO_URL, C.REPO_NAME, C.APP_SLUG))
+            return 0
         return _print_check(root)
     if args.what:
         return _print_what(root)

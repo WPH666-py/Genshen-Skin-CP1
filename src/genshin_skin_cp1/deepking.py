@@ -97,6 +97,62 @@ def repo_root():
     return None
 
 
+def api_root():
+    """仓库/包数据所在层, 可能等于 repo_root(), 也可能是 wheel 内的包目录。
+
+    repo_root() 用于「必须走 GitHub 相对路径」的场景(决定 raw URL);
+    api_root() 用于「只是想读到皮肤文件」的场景, pip 安装下也能工作。
+    """
+    root = repo_root()
+    if root:
+        return root
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def is_repo_checkout():
+    return repo_root() is not None
+
+
+def skin_meta():
+    """读 skin.json(仓库形态读仓库根, pip 形态读包内数据)。"""
+    for base in (repo_root(), os.path.dirname(os.path.abspath(__file__))):
+        if not base:
+            continue
+        p = os.path.join(base, "skin.json")
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f), p
+            except Exception:
+                continue
+    return {}, None
+
+
+# 兜底配色: pip 安装形态下仓库里没有 CSS 文件可读, 用与
+# src/client/genshin-cp1.module.css 完全一致的取值, 保证在线转换与离线生成一致。
+# 改 CSS 时请同步这里(deepking --what 会打印实际取到的值供比对)。
+FALLBACK_CSS = """:root {
+  --bg-base: #ffffff;
+  --bg-layer-1: #ffffff;
+  --bg-layer-2: #eaf4fc;
+  --bg-layer-3: #d9eaf8;
+  --label-primary: #16243a;
+  --label-secondary: #44607d;
+  --label-tertiary: #7590a8;
+  --brand-primary: #3f8fd8;
+  --accent: #3f8fd8;
+  --primary: #3f8fd8;
+  --interactive-bg-hover-solid: #dcebf9;
+  --interactive-bg-active: #c3ddf3;
+  --border-l1: #d5e6f4;
+  --border-l2: #c2dbf0;
+  --border: #c2dbf0;
+  --system-warn-bg: #fff8e6;
+  --system-warn-text: #8a6a00;
+}
+"""
+
+
 def find_css(root):
     """按 DeepKing 的优先级挑选 CSS 文件。"""
     cands = []
@@ -256,34 +312,37 @@ def raw_url(rel_path, branch="main"):
 
 
 def convert(root=None, branch="main"):
-    """本地复刻 DeepKing 的转换结果。返回 (skin_dict, warnings)。"""
+    """本地复刻 DeepKing 的转换结果。返回 (skin_dict, warnings)。
+
+    root 缺省时用 repo_root(); 若当前是 pip 安装(没有仓库), 会自动回退到
+    包内数据 + FALLBACK_CSS, 保证离线也能产出与线上一致的皮肤。
+    """
     warnings = []
     root = root or repo_root()
     if not root:
-        raise FileNotFoundError("未找到仓库根目录(需包含 skin.json); pip 安装形态请用 --repo 指定克隆目录")
+        if not is_repo_checkout():
+            warnings.append("当前是 pip 安装形态, 未找到仓库文件; "
+                            "已改用包内兜底配色(与仓库 CSS 一致)")
+        root = api_root()
 
     # 1) skin.json
-    meta = {}
-    skin_json = os.path.join(root, "skin.json")
-    if os.path.exists(skin_json):
-        try:
-            with open(skin_json, "r", encoding="utf-8") as f:
-                meta = json.load(f)
-        except Exception as e:
-            warnings.append("skin.json 解析失败，已忽略其中的元信息 (%s)" % e)
+    meta, meta_path = skin_meta()
+    if meta_path:
+        pass
     else:
         warnings.append("未找到 skin.json，名称与强调色将根据仓库信息派生")
 
     # 2) CSS 变量
     css_path = find_css(root)
-    light_vars, dark_vars = {}, {}
     if css_path:
         with open(css_path, "r", encoding="utf-8") as f:
             css = f.read()
-        light_vars = extract_vars(css)
-        dark_vars = extract_dark_vars(css)
     else:
-        warnings.append("仓库中未找到 CSS 文件，将完全依赖派生配色")
+        css = FALLBACK_CSS
+        if not any("兜底" in w for w in warnings):
+            warnings.append("未找到 CSS 文件，已使用包内兜底变量")
+    light_vars = extract_vars(css)
+    dark_vars = extract_dark_vars(css)
 
     # 3) 强调色: skin.json accent > CSS brand 变量 > DeepSeek 蓝
     accent = meta.get("accent") or _pick(light_vars, "accent") or "#4d6bfe"
