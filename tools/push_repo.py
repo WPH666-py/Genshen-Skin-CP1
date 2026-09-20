@@ -21,7 +21,7 @@ API = "https://api.github.com"
 # 不进仓库的东西(构建产物 / 缓存 / 开发脚本)
 SKIP_DIRS = {".git", "__pycache__", "build", ".eggs",
              "genshin_skin_cp1.egg-info", "node_modules", ".vscode-test"}
-SKIP_SUFFIX = (".pyc", ".pyo")
+SKIP_SUFFIX = (".pyc", ".pyo", ".bak", ".orig", ".rej")
 SKIP_FILES = {".mcp.json"}
 SKIP_PREFIX = ("genshin_skin_cp1-",)
 

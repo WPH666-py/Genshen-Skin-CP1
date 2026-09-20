@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-原神 CP 壁纸套件 1 —— 桌面桌宠
-用法: genshin-cp1 pet
+原神 CP 壁纸套件 2 —— 桌面桌宠
+用法: genshen-cp2 pet
 
 功能:
   * 透明无边框置顶小立绘, 可拖动

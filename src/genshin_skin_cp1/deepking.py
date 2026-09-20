@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-原神 CP 壁纸套件 1 —— DeepKing 皮肤适配层
+原神 CP 壁纸套件 2 —— DeepKing 皮肤适配层
 
 DeepKing(设置 → 界面皮肤)支持粘贴 GitHub 仓库地址, 由其内置转换器
 `src/utils/skinConverter.ts` 抓取仓库里的:
@@ -89,24 +89,39 @@ def _pick(vars_map, key):
 # ---------------------------------------------------------------- 仓库定位
 
 def repo_root():
-    """本套件的仓库根目录(含 skin.json 的那层); pip 安装形态返回 None。"""
-    here = os.path.dirname(os.path.abspath(__file__))
-    cand = os.path.dirname(os.path.dirname(here))  # src/genshin_skin_cp1 -> 仓库根
-    if os.path.exists(os.path.join(cand, "skin.json")):
-        return cand
+    """本套件的**仓库根目录**; pip 安装形态返回 None。
+
+    注意区别: 包内也有一份 skin.json(供 pip 形态读取元信息), 但那不是仓库根。
+    仓库根的判据是「skin.json + src/client 目录」同时存在 —— 后者是放
+    DeepKing 配色 CSS 的地方, 只有真正的仓库才有。
+    """
+    d = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(6):
+        if (os.path.exists(os.path.join(d, "skin.json"))
+                and os.path.isdir(os.path.join(d, "src", "client"))):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
     return None
 
 
-def api_root():
-    """仓库/包数据所在层, 可能等于 repo_root(), 也可能是 wheel 内的包目录。
+def pkg_root():
+    """包目录 .../genshin_skin_cp1(本模块在它的 engine/ 下, 故向上一层)。
 
-    repo_root() 用于「必须走 GitHub 相对路径」的场景(决定 raw URL);
-    api_root() 用于「只是想读到皮肤文件」的场景, pip 安装下也能工作。
+    pip 安装形态下 skin.json 与 engine/assets 都在这一层, 是「读包内文件」的基准。
     """
-    root = repo_root()
-    if root:
-        return root
-    return os.path.dirname(os.path.abspath(__file__))
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def api_root():
+    """「只是想读到皮肤文件」时的基准目录。
+
+    仓库形态用仓库根(里面有 skin.json + src/client);
+    pip 形态用包目录(里面有随包发布的 skin.json)。
+    """
+    return repo_root() or pkg_root()
 
 
 def is_repo_checkout():
@@ -114,8 +129,8 @@ def is_repo_checkout():
 
 
 def skin_meta():
-    """读 skin.json(仓库形态读仓库根, pip 形态读包内数据)。"""
-    for base in (repo_root(), os.path.dirname(os.path.abspath(__file__))):
+    """读 skin.json(仓库形态读仓库根, pip 形态读包目录)。"""
+    for base in (repo_root(), pkg_root()):
         if not base:
             continue
         p = os.path.join(base, "skin.json")
@@ -129,7 +144,7 @@ def skin_meta():
 
 
 # 兜底配色: pip 安装形态下仓库里没有 CSS 文件可读, 用与
-# src/client/genshin-cp1.module.css 完全一致的取值, 保证在线转换与离线生成一致。
+# src/client/genshen-cp2.module.css 完全一致的取值, 保证在线转换与离线生成一致。
 # 改 CSS 时请同步这里(deepking --what 会打印实际取到的值供比对)。
 FALLBACK_CSS = """:root {
   --bg-base: #ffffff;
@@ -154,33 +169,39 @@ FALLBACK_CSS = """:root {
 
 
 def find_css(root):
-    """按 DeepKing 的优先级挑选 CSS 文件。"""
-    cands = []
-    for base, _dirs, files in os.walk(root):
-        if ".git" in base or "node_modules" in base:
-            continue
-        for f in files:
-            if f.endswith(".css"):
-                cands.append(os.path.join(base, f))
-    if not cands:
+    """按 DeepKing 的优先级挑选 CSS 文件。
+
+    只认 <根>/src/client/ 下的 .module.css —— 这是 DeepKing 转换器的首选路径,
+    也正是我们放配色的地方。不做全仓库通配, 否则会误取构建产物或其它套件的 CSS。
+    """
+    client = os.path.join(root, "src", "client")
+    if not os.path.isdir(client):
         return None
-    rel = lambda p: os.path.relpath(p, root).replace("\\", "/")  # noqa: E731
-    for want in (
-        lambda r: re.search(r"src/client/.*\.module\.css$", r),
-        lambda r: r.startswith("src/client/"),
-        lambda r: re.search(r"src/client/.*\.module\.css$", r),
-    ):
-        for p in cands:
-            if want(rel(p)):
-                return p
-    return sorted(cands)[0]
+    module_css = sorted(f for f in os.listdir(client) if f.endswith(".module.css"))
+    if module_css:
+        return os.path.join(client, module_css[0])
+    any_css = sorted(f for f in os.listdir(client) if f.endswith(".css"))
+    return os.path.join(client, any_css[0]) if any_css else None
+
+
+# 扫描吉祥物时要跳过的目录: 构建产物、依赖、以及**包内素材**
+# (engine/assets 里是壁纸用的插画, 不是编辑区水印; DeepKing 在线转换看到的是
+#  GitHub 上的仓库, 不会去 engine/assets 里挑图, 本地也不该挑。)
+_SKIP_DIR_PARTS = (".git", "node_modules", "__pycache__", "dist", "build",
+                   "engine", "vscode", "tools", "preview")
 
 
 def find_mascots(root):
-    """挑选吉祥物图片, 优先级与 skinConverter.ts 一致。"""
+    """挑选吉祥物图片, 优先级与 skinConverter.ts 一致。
+
+    首选 <根>/assets/background/, 其次文件名含 maid/whale/poster/mascot 的,
+    最后任意 assets/ 下的图片。engine/assets 与 vscode/media 一律排除,
+    以免取到壁纸插画或扩展缩略图。
+    """
     imgs = []
-    for base, _dirs, files in os.walk(root):
-        if ".git" in base or "node_modules" in base:
+    for base, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in _SKIP_DIR_PARTS]
+        if any(part in _SKIP_DIR_PARTS for part in base.split(os.sep)):
             continue
         for f in files:
             if re.search(r"\.(webp|png|jpe?g)$", f, re.I):
@@ -194,7 +215,7 @@ def find_mascots(root):
                 return p
         return None
 
-    bg = [p for p in imgs if re.search(r"assets/background/", rel(p), re.I)]
+    bg = [p for p in imgs if re.search(r"(^|/)assets/background/", rel(p), re.I)]
     if bg:
         light = first_containing(bg, rel, ("light", "day")) or bg[0]
         dark = first_containing(bg, rel, ("dark", "night")) or bg[0]
@@ -571,7 +592,7 @@ def preview_html(skin, embed_images=True):
           <div class="body">
             <aside style="background:%(sidebarBg)s;color:%(sidebarText)s;border-color:%(border)s">
               <div class="hdr" style="color:%(sidebarHeader)s">资源管理器</div>
-              <div class="item">📁 Genshen-Skin-CP1</div>
+              <div class="item">📁 Genshen-skin-CP2</div>
               <div class="item" style="background:%(sidebarHover)s">📄 skin.json</div>
               <div class="item" style="background:%(sidebarSelected)s">📄 skin_core.py</div>
             </aside>
@@ -636,8 +657,8 @@ h2{font-size:14px;margin:26px 0 10px;opacity:.75;font-weight:600}
 </body></html>""" % {
         "name": skin["name"], "id": skin["id"], "source": skin.get("source", ""),
         "accent": p["accent"], "region_css": REGION_CSS,
-        "light": region(p, "亮色 · 原神CP1", mascot.get("light")),
-        "dark": region(d, "暗色 · 原神CP1", mascot.get("dark")),
+        "light": region(p, "亮色 · 原神CP2", mascot.get("light")),
+        "dark": region(d, "暗色 · 原神CP2", mascot.get("dark")),
     }
 
 

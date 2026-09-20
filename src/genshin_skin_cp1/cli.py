@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-原神 CP 壁纸套件 1 —— 命令行
+原神 CP 壁纸套件 2 —— 命令行
 
-  genshin-cp1                 # 直接应用默认壁纸(第 1 张 比心)
-  genshin-cp1 2               # 应用第 2 张 共舞
-  genshin-cp1 3 --cover       # 第 3 张按 cover 满屏裁切
-  genshin-cp1 list            # 列出所有可切换样式
-  genshin-cp1 random          # 随机来一张
-  genshin-cp1 all             # 生成全部样式到 ~/.genshin-cp1/wallpapers
-  genshin-cp1 all --out DIR   # 生成到指定目录(JetBrains 背景图用)
-  genshin-cp1 cycle 30        # 每 30 分钟自动随机换壁纸
-  genshin-cp1 switcher        # 打开可视化切换器
-  genshin-cp1 pet             # 启动桌面桌宠
-  genshin-cp1 copy            # 只合成不设置
-  genshin-cp1 info            # 环境与素材自检
+  genshen-cp2                 # 直接应用默认壁纸(第 1 张 比心)
+  genshen-cp2 2               # 应用第 2 张 共舞
+  genshen-cp2 3 --cover       # 第 3 张按 cover 满屏裁切
+  genshen-cp2 list            # 列出所有可切换样式
+  genshen-cp2 random          # 随机来一张
+  genshen-cp2 all             # 生成全部样式到 ~/.genshen-cp2/wallpapers
+  genshen-cp2 all --out DIR   # 生成到指定目录(JetBrains 背景图用)
+  genshen-cp2 cycle 30        # 每 30 分钟自动随机换壁纸
+  genshen-cp2 switcher        # 打开可视化切换器
+  genshen-cp2 pet             # 启动桌面桌宠
+  genshen-cp2 copy            # 只合成不设置
+  genshen-cp2 info            # 环境与素材自检
 """
 import argparse
 import os
@@ -191,7 +191,7 @@ def build_parser():
     p.add_argument("--out", default=None, help="输出目录")
     p.set_defaults(func=_cmd_deepking)
 
-    # 位置参数兼容: genshin-cp1 2 / genshin-cp1 single2
+    # 位置参数兼容: genshen-cp2 2 / genshen-cp2 single2
     ap.add_argument("mode", nargs="?", default=None, help="样式名或序号: 1 2 3 / single1 / cover1")
     ap.add_argument("--cover", action="store_true", help="按 cover 满屏裁切(默认模糊填充+居中卡片)")
     ap.add_argument("--size", default=None, help="壁纸尺寸, 如 2560x1440")

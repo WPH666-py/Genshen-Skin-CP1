@@ -64,3 +64,17 @@ MODES = [
     ("cover3", IMAGE_NAMES[2] + " (满屏)"),
 ]
 DEFAULT_MODE = "single1"
+# ---------------------------------------------------------------- DeepKing 皮肤
+# 供引擎的 DeepKing 适配层读取(与 characters/ 形态的 CP2 保持同名常量)
+DEEPKING_SKIN_ID = "genshin-cp1-mitiya-voyanisa"
+DEEPKING_SKIN_NAME = "原神CP1 · 米提亚×沃雅妮莎"
+DEEPKING_SKIN_DESC = (
+    "米提亚与沃雅妮莎的蓝调同人主题: 日景青蓝取自「比心」, "
+    "夜景蓝紫取自「共舞」。32 槽位逐项校色, 亮/暗双套。"
+)
+DEEPKING_MASCOT_LIGHT = "assets/background/mascot-cp1-light.jpg"
+DEEPKING_MASCOT_DARK = "assets/background/mascot-cp1-dark.jpg"
+
+# 与并列套件对照用
+SERIES = "CP1"
+PAIR = "米提亚 × 沃雅妮莎"

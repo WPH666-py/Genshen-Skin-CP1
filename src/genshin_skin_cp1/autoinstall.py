@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-原神 CP 壁纸套件 1 —— 自动安装器
+原神 CP 壁纸套件 2 —— 自动安装器
 
-  genshin-cp1-install                 # 自动: 装依赖 -> 生成壁纸 -> 设为桌面 -> 注册已装 IDE
-  genshin-cp1-install --no-wallpaper  # 只做 IDE 注册, 不动桌面壁纸
-  genshin-cp1-install --only vscode   # 只处理指定目标
+  genshen-cp2-install                 # 自动: 装依赖 -> 生成壁纸 -> 设为桌面 -> 注册已装 IDE
+  genshen-cp2-install --no-wallpaper  # 只做 IDE 注册, 不动桌面壁纸
+  genshen-cp2-install --only vscode   # 只处理指定目标
 
 覆盖目标:
   vscode / trae / codex / cursor / windsurf / vscodium  —— VSCode 系扩展

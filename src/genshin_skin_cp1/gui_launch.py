@@ -38,7 +38,7 @@ def launch(module_name, background=True):
 
 
 def main():
-    """genshin-cp1-switcher 入口: 直接启动切换器。"""
+    """genshen-cp2-switcher 入口: 直接启动切换器。"""
     name = os.path.basename(sys.argv[0] or "")
     target = "pet.py" if "pet" in name else "switcher.py"
     if len(sys.argv) > 1 and sys.argv[1] in ("pet.py", "switcher.py"):

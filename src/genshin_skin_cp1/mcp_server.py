@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-原神 CP 壁纸套件 1 —— MCP (Model Context Protocol) 服务器
+原神 CP 壁纸套件 2 —— MCP (Model Context Protocol) 服务器
 
 让任意支持 MCP 的 AI 助手直接调用本套件换壁纸:
   * DSH Harness / Claude Code / Kimi Code / CodeX / Cursor / Trae / Windsurf 等
@@ -9,9 +9,9 @@
 每次读一行 JSON, 回一行 JSON。
 
 注册示例(任选其一):
-  claude mcp add genshin-cp1 -- genshin-cp1-mcp
+  claude mcp add genshen-cp2 -- genshen-cp2-mcp
   # 或写入 .mcp.json / mcp_servers.json:
-  {"mcpServers": {"genshin-cp1": {"command": "genshin-cp1-mcp", "args": []}}}
+  {"mcpServers": {"genshen-cp2": {"command": "genshen-cp2-mcp", "args": []}}}
 
 暴露的工具:
   list_wallpapers   列出所有可切换样式
@@ -73,7 +73,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "out_dir": {"type": "string", "description": "输出目录, 默认 ~/.genshin-cp1/wallpapers"},
+                "out_dir": {"type": "string", "description": "输出目录, 默认 ~/.genshen-cp2/wallpapers"},
                 "size": {"type": "string", "description": "可选, 如 2560x1440"},
             },
             "additionalProperties": False,
@@ -187,7 +187,7 @@ def _handle(msg):
                 "capabilities": {"tools": {"listChanged": False}},
                 "serverInfo": {"name": SERVER_NAME, "version": SERVER_VERSION},
                 "instructions": (
-                    "原神 CP 壁纸套件 1 (米提亚 × 沃雅妮莎)。"
+                    "原神 CP 壁纸套件 2 (奥黛塔 × 沃雅妮莎)。"
                     "用户说「换壁纸/换一张/切壁纸」时调用 set_wallpaper 或 next_wallpaper;"
                     "不确定可用样式时先调用 list_wallpapers。"
                 ),

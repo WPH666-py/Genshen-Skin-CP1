@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-原神 CP 壁纸套件 1 —— 可视化切换器
-用法: genshin-cp1 switcher   (或 python -m genshin_skin_cp1.switcher)
+原神 CP 壁纸套件 2 —— 可视化切换器
+用法: genshen-cp2 switcher   (或 python -m genshin_skin_cp1.switcher)
 
 功能:
   * 左侧实时预览当前样式

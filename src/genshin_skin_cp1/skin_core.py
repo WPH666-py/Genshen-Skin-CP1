@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-原神 CP 壁纸套件 1 —— 核心库
+原神 CP 壁纸套件 2 —— 核心库
 跨平台: Windows / macOS / Linux
 
 职责:
@@ -68,12 +68,32 @@ def ensure_pillow():
 # ---------------------------------------------------------------- 素材定位
 
 def _repo_assets_dir():
-    """git 仓库形态: <repo>/src/genshin_skin_cp1/assets/ 或 <repo>/assets/。"""
+    """素材目录候选(按优先级)。
+
+    CP2 的包是嵌套结构(src/genshin_skin_cp1/engine/), 素材放在 engine/assets/,
+    因此这里比 CP1 多一层候选:
+      1. <包>/engine/assets/            —— 本仓库与 wheel 的实际位置
+      2. <仓库根>/assets/               —— 允许把素材放仓库根统一管理
+      3. <仓库根>/src/genshin_skin_cp1/assets/ —— 兼容素材提到包根的写法
+
+    只有在**仓库根**存在(即 src/client 这类仓库标志齐全)时才探测 2/3,
+    否则 pip 形态下会把 site-packages 的上级目录当成仓库根乱找。
+    """
     here = os.path.dirname(os.path.abspath(__file__))
-    for cand in (
-        os.path.join(here, "assets"),
-        os.path.join(os.path.dirname(os.path.dirname(here)), "assets"),
-    ):
+    pkg = os.path.dirname(here)                      # .../genshin_skin_cp1
+    cands = [os.path.join(here, "assets")]
+    # 仓库根: 从包往上找带 skin.json 的那层
+    d = pkg
+    for _ in range(4):
+        if os.path.exists(os.path.join(d, "skin.json")):
+            cands.append(os.path.join(d, "assets"))
+            cands.append(os.path.join(pkg, "assets"))
+            break
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    for cand in cands:
         if os.path.isdir(cand) and os.path.exists(os.path.join(cand, IMAGE_FILES[0])):
             return cand
     return None
@@ -81,26 +101,31 @@ def _repo_assets_dir():
 
 def assets_dir():
     """返回素材目录(带缓存)。优先仓库内 assets/, 回退 wheel 内包数据。"""
-    global C
     if C.ASSETS_DIR and os.path.isdir(C.ASSETS_DIR):
         return C.ASSETS_DIR
     found = _repo_assets_dir()
     if found:
         C.ASSETS_DIR = found
         return found
-    # pip 安装形态: 包数据目录
-    cand = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
-    if os.path.isdir(cand):
-        C.ASSETS_DIR = cand
-        return cand
+    # pip 安装形态: 包数据目录(engine/assets)
+    for cand in (
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets"),
+    ):
+        if os.path.isdir(cand):
+            C.ASSETS_DIR = cand
+            return cand
     # 最后尝试 importlib.resources(某些 zip 安装方式)
     try:
         from importlib.resources import files as _files
-        p = _files("genshin_skin_cp1").joinpath("assets")
-        sp = str(p)
-        if os.path.isdir(sp):
-            C.ASSETS_DIR = sp
-            return sp
+        for rel in ("engine/assets", "assets"):
+            p = _files("genshin_skin_cp1")
+            for part in rel.split("/"):
+                p = p.joinpath(part)
+            sp = str(p)
+            if os.path.isdir(sp):
+                C.ASSETS_DIR = sp
+                return sp
     except Exception:
         pass
     raise FileNotFoundError(
@@ -295,18 +320,30 @@ def compose_single(idx, size=None):
 
 
 def compose_cover(idx, size=None):
-    """满屏样式: 素材按 cover 裁切铺满整屏, 无边框。"""
+    """满屏样式: 素材按 cover 裁切铺满整屏, 无边框。
+
+    竖图对 16:9 做正中对半裁会把人物头部切掉, 因此按素材的
+    IMAGE_META[...]["cover_bias"] 把取景窗偏向主体(缺省居中)。
+    """
     ensure_pillow()
     from PIL import Image
 
     if size is None:
         size = screen_size()
+    name = IMAGE_FILES[idx - 1]
     src = Image.open(asset_path(idx)).convert("RGB")
     W, H = size
     scale = max(W / src.width, H / src.height)
     nw, nh = max(W, int(round(src.width * scale))), max(H, int(round(src.height * scale)))
     img = src.resize((nw, nh), Image.LANCZOS)
-    x, y = (nw - W) // 2, (nh - H) // 2
+
+    meta = C.IMAGE_META.get(name, {}) or {}
+    bx, by = meta.get("cover_bias") or (0.5, 0.5)
+    # 取景窗左上角: 让偏向点尽量落在画面中心, 再夹紧到合法范围
+    x = int(round(bx * nw - W / 2.0))
+    y = int(round(by * nh - H / 2.0))
+    x = max(0, min(nw - W, x))
+    y = max(0, min(nh - H, y))
     return img.crop((x, y, x + W, y + H))
 
 
@@ -372,7 +409,7 @@ def build(mode, size=None, force=False):
 
 
 def build_all(out_dir=None, size=None, force=True):
-    """生成全部模式到 out_dir(默认 ~/.genshin-cp1/wallpapers), 返回 [(mode, label, path)]。"""
+    """生成全部模式到 out_dir(默认 ~/.genshen-cp2/wallpapers), 返回 [(mode, label, path)]。"""
     ensure_dirs()
     size = tuple(size) if size else screen_size()
     out_dir = os.path.abspath(out_dir) if out_dir else WALLPAPER_DIR
