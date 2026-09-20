@@ -1,43 +1,33 @@
 /**
- * 原神CP1 · 米提亚×沃雅妮莎 —— DeepKing 皮肤配色变量
+ * 原神CP1 · 米提亚×沃雅妮莎 —— 界面配色变量
  *
- * 用途: 在 DeepKing「设置 → 界面皮肤」里粘贴本仓库地址时, 其内置转换器
- * (src/utils/skinConverter.ts) 会抓取本文件, 用正则 /--变量: #色值/ 提取配色,
- * 据此推导整套 32 槽位 SkinPalette。
+ * 本文件同时被两个消费者读取:
+ *   1. DeepKing 的皮肤转换器(src/utils/skinConverter.ts)—— 抓取「--名: #色值」
+ *   2. 本仓库自己的页面/主题
  *
- * ─── 三条必须遵守的约束(改配色前务必先读) ─────────────────────────
+ * 关于变量命名规则、为什么夜景配色用 duskcolor 前缀、
+ * 以及注释里绝对不能写的四种字符, 全部记在 src/client/SKIN-NOTES.md。
+ * 改本文件前请先读那份说明, 改完运行: genshin-cp1 deepking --check
  *
- * 1. 色值必须是 # 开头的十六进制。rgb() / hsl() / 颜色关键字一律被忽略。
- *
- * 2. 转换器取色靠「变量名包含关键词」, 亮色与暗色的关键词必须在同一套里:
- *      --bg-base / --bg-layer-2 / --label-primary / --brand-primary /
- *      --border-l2 / --interactive-bg-hover-solid / --interactive-bg-active
- *
- * 3. **暗色变量不能用同名变量声明。** 转换器的 extractVars() 是一次无作用域的
- *    全文扫描, 同名变量后者覆盖前者 —— 若在暗色块里再写一次 --bg-base,
- *    亮色调色板会被暗色值覆盖, 结果亮色和暗色两套都变深色。
- *    所以这里暗色作用域统一使用 `--dusk*` 前缀(不含 "dark" 字样,
- *    因此也不会被 extractDarkVars 误当成暗色变量)。映射关系写在下方注释里。
- *
- * 想切换本仓库自己的 CSS 主题时, 把 [data-theme="dark"] 那一块的
- * --dusk* 变量按注释映射回 --* 即可。
+ * 本文件刻意不写任何说明性注释 —— 转换器不剥离注释, 注释里的花括号、
+ * 十六进制色值或「--名」形式的字样都会被它当成真实声明。
  */
 
 :root {
-  /* ── 亮色 · 日景(取自「比心」插画的青蓝与波点白) ── */
+  /* 亮色 · 日景(取自「比心」插画的青蓝与波点白) */
 
-  /* 底色: 主背景 / 层2 / 层3 */
+  /* 底色: 主背景、层2、层3 */
   --bg-base: #ffffff;
   --bg-layer-1: #ffffff;
   --bg-layer-2: #eaf4fc;
   --bg-layer-3: #d9eaf8;
 
-  /* 文字: 主 / 次 / 弱 —— 墨蓝 */
+  /* 文字: 主、次、弱 */
   --label-primary: #16243a;
   --label-secondary: #44607d;
   --label-tertiary: #7590a8;
 
-  /* 品牌 / 强调色 —— 比心插画的青蓝(少女发色) */
+  /* 品牌强调色: 比心插画的青蓝 */
   --brand-primary: #3f8fd8;
   --accent: #3f8fd8;
   --primary: #3f8fd8;
@@ -56,27 +46,7 @@
   --system-warn-text: #8a6a00;
 }
 
-/*
- * 暗色 · 夜景(取自「共舞」插画的夜空蓝与薰衣草紫)
- *
- * 选择器里**刻意不含 "dark" 字样**, 这样转换器不会把它当作暗色作用域 ——
- * 于是 DeepKing 会按内置皮肤同款规则, 从上面的亮色自动派生出一套暗色调色板
- * (见 skinConverter.ts: "未找到暗色 CSS 变量，暗色变体已基于亮色自动派生")。
- *
- * 本仓库自己的 CSS 主题名用 "midnight", 变量名一律 `--dusk*`, 映射关系:
- *   --duskcolor-bgbase           -> --bg-base
- *   --duskcolor-bglayer2         -> --bg-layer-2
- *   --duskcolor-bglayer3         -> --bg-layer-3
- *   --duskcolor-labelprimary     -> --label-primary
- *   --duskcolor-labelsecondary   -> --label-secondary
- *   --duskcolor-brandprimary     -> --brand-primary
- *   --duskcolor-hoversolid       -> --interactive-bg-hover-solid
- *   --duskcolor-activebg         -> --interactive-bg-active
- *   --duskcolor-borderl2         -> --border-l2
- *
- * 之所以绕这一道: 转换器做的是无作用域同名覆盖扫描, 直接写同名变量会让
- * 亮色调色板也被刷成深色(详见文件头第 3 条)。
- */
+/* 夜景配色(取自「共舞」插画): 主题名 midnight, 变量统一 duskcolor 前缀 */
 [data-theme="midnight"],
 .midnight-theme {
   --duskcolor-bgbase: #121c2b;

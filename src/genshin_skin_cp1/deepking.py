@@ -386,11 +386,28 @@ def check(root=None):
         if re.search(r"@media[^{]*prefers-color-scheme", clean):
             notes.append("发现真实的 @media (prefers-color-scheme) 块: 若其中重复声明同名颜色变量, "
                          "DeepKing 的无作用域扫描会用它覆盖亮色调色板(内置皮肤均不用该写法)")
-        # 非法色值(DeepKing 正则不认 rgb()/hsl()/颜色名)
-        for m in re.finditer(r"(--[\w-]+)\s*:\s*([^;#}]+)", text):
-            if not col.is_hex(m.group(2).strip()) and m.group(2).strip():
+        # 非法色值(DeepKing 正则不认 rgb()/hsl()/颜色名)——
+        # 只看剥掉注释后的正文, 否则文档里写的「--变量名: 说明」会被误判
+        for m in re.finditer(r"(--[\w-]+)\s*:\s*([^;#}]+)", clean):
+            val = m.group(2).strip()
+            if val and not col.is_hex(val):
                 notes.append("变量 %s 的值 %r 不是 # 十六进制, 转换器会忽略"
-                             % (m.group(1), m.group(2).strip()))
+                             % (m.group(1), val[:40]))
+
+        # 反向护栏: 注释里出现花括号会被 DeepKing 的块正则当成假选择器块,
+        # 使其把注释内容当变量抽取(值恰好都是十六进制时还会真的污染调色板)。
+        for c in _COMMENT_RE.finditer(text):
+            body = c.group(0)
+            if "{" in body or "}" in body:
+                notes.append("CSS 注释里出现了花括号: DeepKing 不剥注释, 会把整段注释"
+                             "误认作选择器块并尝试从中取色, 建议删掉注释里的花括号")
+            if "dark" in body.lower():
+                notes.append("CSS 注释里出现了 dark 字样: 会被 extractDarkVars 误判成"
+                             "暗色作用域, 建议改写该词")
+            for vm in _VAR_RE.finditer(body):
+                notes.append("CSS 注释里出现了「%s: %s」形式: 转换器不剥注释, 会把它当成"
+                             "真实变量取值, 建议在注释里避免这种写法"
+                             % (vm.group(1), vm.group(2)))
 
     # 吉祥物
     light_img, dark_img, note = find_mascots(root)
