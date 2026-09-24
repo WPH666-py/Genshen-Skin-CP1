@@ -51,18 +51,62 @@ def ensure_dirs():
         os.makedirs(d, exist_ok=True)
 
 
+def _in_venv():
+    """venv / virtualenv / conda 里 `pip install --user` 必然失败。
+
+    venv 靠 sys.prefix != sys.base_prefix 判定；conda 没有这个差异，
+    改看 CONDA_PREFIX 是否指向当前解释器。
+    """
+    try:
+        if sys.prefix != getattr(sys, "base_prefix", sys.prefix):
+            return True
+    except Exception:
+        pass
+    conda = os.environ.get("CONDA_PREFIX")
+    if conda:
+        try:
+            if os.path.normcase(os.path.abspath(conda)) == os.path.normcase(
+                    os.path.abspath(sys.prefix)):
+                return True
+        except Exception:
+            pass
+    return os.path.exists(os.path.join(sys.prefix, "pyvenv.cfg"))
+
+
 def ensure_pillow():
-    """确保 Pillow 可用; 缺失时自动 pip 安装。"""
+    """确保 Pillow 可用; 缺失时自动 pip 安装(按环境自适应)。
+
+    不再固定带 `--user` —— 那在 venv / conda 下会直接失败，
+    把「装个壁纸」变成崩溃。
+    """
     try:
         import PIL  # noqa: F401
         return
     except ImportError:
         pass
+
+    base = [sys.executable, "-m", "pip", "install"]
+    if _in_venv():
+        attempts = [base]
+    else:
+        attempts = [base + ["--user"], base]
+    # 新版 Debian/Ubuntu 的 PEP 668 保护: 显式放行
+    attempts.append(base + ["--break-system-packages"])
+
     print("[%s] 未检测到 Pillow, 正在自动安装 ..." % C.APP_SLUG)
-    subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", "--user", "pillow"]
-    )
-    import PIL  # noqa: F401
+    for args in attempts:
+        try:
+            subprocess.check_call(args + ["pillow"])
+        except Exception:
+            continue
+        try:
+            import PIL  # noqa: F401
+            return
+        except ImportError:
+            continue
+    raise RuntimeError(
+        "自动安装 Pillow 失败, 请手动执行:\n"
+        "  %s -m pip install pillow" % sys.executable)
 
 
 # ---------------------------------------------------------------- 素材定位
